@@ -1,0 +1,79 @@
+#program 10 Implement GAN algorithm for image -to-image translation
+import tensorflow as tf
+import tensorflow_hub as hub
+import matplotlib.pyplot as plt
+import numpy as np
+import cv2
+
+# Load the pre-trained style transfer model from TensorFlow Hub
+# The URL needs to be updated to a valid and accessible model
+hub_module = hub.load('https://tfhub.dev/google/magenta/arbitrary-image-stylization-v1-256/2')
+
+# Function to load and preprocess images
+def load_and_process_image(image_path, target_size=(256, 256)):
+    img = cv2.imread(image_path)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
+    img = cv2.resize(img, target_size)  # Resize the image
+    img = np.array(img, dtype=np.float32) / 255.0  # Normalize the image as float32
+    img = img[None, :]  # Add batch dimension
+    return img
+
+# Load the content and style images
+content_image_path = '/content/wallpaper HD.jpeg'  # Replace with your content image path
+style_image_path = '/content/Anime Aesthetic Scenery Wallpaper.jpeg'  # Replace with your style image path
+content_image = load_and_process_image(content_image_path)
+style_image = load_and_process_image(style_image_path)
+
+# Convert images to tensors
+content_image_tensor = tf.convert_to_tensor(content_image, dtype=tf.float32)
+style_image_tensor = tf.convert_to_tensor(style_image, dtype=tf.float32)
+
+# Perform style transfer using the pre-trained model
+# Explicitly ensure tensors are float32
+content_tensor = tf.cast(content_image, tf.float32)
+style_tensor = tf.cast(style_image, tf.float32)
+stylized_image = hub_module(content_tensor, style_tensor)[0]
+
+# Function to display the images
+def display_images(content_image, style_image, stylized_image):
+    plt.figure(figsize=(10, 10))
+
+    # Content image
+    plt.subplot(1, 3, 1)
+    plt.imshow(content_image[0])
+    plt.title("Content Image")
+    plt.axis('off')
+
+    # Style image
+    plt.subplot(1, 3, 2)
+    plt.imshow(style_image[0])
+    plt.title("Style Image")
+    plt.axis('off')
+
+    # Stylized image
+    plt.subplot(1, 3, 3)
+    plt.imshow(tf.squeeze(stylized_image))
+    plt.title("Stylized Image")
+    plt.axis('off')
+
+    plt.show()
+
+# Display the results
+display_images(content_image, style_image, stylized_image)
+
+# To save the stylized image
+def save_image(image, filename):
+    if len(image.shape) > 3:
+        image = tf.squeeze(image)
+    
+    image = tf.clip_by_value(image, 0.0, 1.0)
+    image = image.numpy() * 255.0
+    image = image.astype(np.uint8)
+    
+    # Convert to BGR for OpenCV
+    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    cv2.imwrite(filename, image)
+    print(f"Image saved as {filename}")
+
+# Save the stylized image
+save_image(stylized_image, '/content/stylized_image.jpg')
